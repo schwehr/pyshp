@@ -306,8 +306,7 @@ def ring_sample(coords, ccw=False):
 
     def itercoords():
         # iterate full closed ring
-        for p in coords:
-            yield p
+        yield from coords
         # finally, yield the second coordinate to the end to allow checking the last triplet
         yield coords[1]
 
@@ -345,7 +344,7 @@ def ring_sample(coords, ccw=False):
 
 def ring_contains_ring(coords1, coords2):
     """Returns True if all vertexes in coords2 are fully inside coords1."""
-    return all((ring_contains_point(coords1, p2) for p2 in coords2))
+    return all(ring_contains_point(coords1, p2) for p2 in coords2)
 
 
 def organize_polygon_rings(rings, return_errors=None):
@@ -393,7 +392,7 @@ def organize_polygon_rings(rings, return_errors=None):
             return polys
 
         # first determine each hole's candidate exteriors based on simple bbox contains test
-        hole_exteriors = dict([(hole_i, []) for hole_i in xrange(len(holes))])
+        hole_exteriors = {hole_i: [] for hole_i in xrange(len(holes))}
         exterior_bboxes = [ring_bbox(ring) for ring in exteriors]
         for hole_i in hole_exteriors.keys():
             hole_bbox = ring_bbox(holes[hole_i])
@@ -473,7 +472,7 @@ def organize_polygon_rings(rings, return_errors=None):
         return polys
 
 
-class Shape(object):
+class Shape:
     def __init__(
         self, shapeType=NULL, points=None, parts=None, partTypes=None, oid=None
     ):
@@ -707,7 +706,7 @@ still included but were encoded as GeoJSON exterior rings instead of holes."
         return SHAPETYPE_LOOKUP[self.shapeType]
 
     def __repr__(self):
-        return "Shape #{}: {}".format(self.__oid, self.shapeTypeName)
+        return f"Shape #{self.__oid}: {self.shapeTypeName}"
 
 
 class _Record(list):
@@ -758,10 +757,10 @@ class _Record(list):
             index = self.__field_positions[item]
             return list.__getitem__(self, index)
         except KeyError:
-            raise AttributeError("{} is not a field name".format(item))
+            raise AttributeError(f"{item} is not a field name")
         except IndexError:
             raise IndexError(
-                "{} found as a field but not enough values available.".format(item)
+                f"{item} found as a field but not enough values available."
             )
 
     def __setattr__(self, key, value):
@@ -778,7 +777,7 @@ class _Record(list):
             index = self.__field_positions[key]
             return list.__setitem__(self, index, value)
         except KeyError:
-            raise AttributeError("{} is not a field name".format(key))
+            raise AttributeError(f"{key} is not a field name")
 
     def __getitem__(self, item):
         """
@@ -799,7 +798,7 @@ class _Record(list):
         if index is not None:
             return list.__getitem__(self, index)
         else:
-            raise IndexError('"{}" is not a field name and not an int'.format(item))
+            raise IndexError(f'"{item}" is not a field name and not an int')
 
     def __setitem__(self, key, value):
         """
@@ -817,7 +816,7 @@ class _Record(list):
             if index is not None:
                 return list.__setitem__(self, index, value)
             else:
-                raise IndexError("{} is not a field name and not an int".format(key))
+                raise IndexError(f"{key} is not a field name and not an int")
 
     @property
     def oid(self):
@@ -829,15 +828,15 @@ class _Record(list):
         Returns this Record as a dictionary using the field names as keys
         :return: dict
         """
-        dct = dict((f, self[i]) for f, i in self.__field_positions.items())
+        dct = {f: self[i] for f, i in self.__field_positions.items()}
         if date_strings:
             for k, v in dct.items():
                 if isinstance(v, date):
-                    dct[k] = "{:04d}{:02d}{:02d}".format(v.year, v.month, v.day)
+                    dct[k] = f"{v.year:04d}{v.month:02d}{v.day:02d}"
         return dct
 
     def __repr__(self):
-        return "Record #{}: {}".format(self.__oid, list(self))
+        return f"Record #{self.__oid}: {list(self)}"
 
     def __dir__(self):
         """
@@ -861,7 +860,7 @@ class _Record(list):
         return list.__eq__(self, other)
 
 
-class ShapeRecord(object):
+class ShapeRecord:
     """A ShapeRecord object containing a shape along with its attributes.
     Provides the GeoJSON __geo_interface__ to return a Feature dictionary."""
 
@@ -887,7 +886,7 @@ class Shapes(list):
     to return a GeometryCollection dictionary."""
 
     def __repr__(self):
-        return "Shapes: {}".format(list(self))
+        return f"Shapes: {list(self)}"
 
     @property
     def __geo_interface__(self):
@@ -907,7 +906,7 @@ class ShapeRecords(list):
     to return a FeatureCollection dictionary."""
 
     def __repr__(self):
-        return "ShapeRecords: {}".format(list(self))
+        return f"ShapeRecords: {list(self)}"
 
     @property
     def __geo_interface__(self):
@@ -924,7 +923,7 @@ class ShapefileException(Exception):
     pass
 
 
-class Reader(object):
+class Reader:
     """Reads the three files of a shapefile as a unit or
     separately.  If one of the three files (.shp, .shx,
     .dbf) is missing no exception is thrown until you try
@@ -1151,9 +1150,7 @@ class Reader(object):
                 )
             )
         if self.dbf:
-            info.append(
-                "    {} records ({} fields)".format(len(self), len(self.fields))
-            )
+            info.append(f"    {len(self)} records ({len(self.fields)} fields)")
         return "\n".join(info)
 
     def __enter__(self):
@@ -1219,8 +1216,7 @@ class Reader(object):
 
     def __iter__(self):
         """Iterates through the shapes/records in the shapefile."""
-        for shaperec in self.iterShapeRecords():
-            yield shaperec
+        yield from self.iterShapeRecords()
 
     @property
     def __geo_interface__(self):
@@ -1245,7 +1241,7 @@ class Reader(object):
             self.load_dbf(shapeName)
             if not (self.shp or self.dbf):
                 raise ShapefileException(
-                    "Unable to open %s.dbf or %s.shp." % (shapeName, shapeName)
+                    f"Unable to open {shapeName}.dbf or {shapeName}.shp."
                 )
         if self.shp:
             self.__shpHeader()
@@ -1260,13 +1256,13 @@ class Reader(object):
         """
         shp_ext = "shp"
         try:
-            self.shp = open("%s.%s" % (shapefile_name, shp_ext), "rb")
+            self.shp = open(f"{shapefile_name}.{shp_ext}", "rb")
             self._files_to_close.append(self.shp)
-        except IOError:
+        except OSError:
             try:
-                self.shp = open("%s.%s" % (shapefile_name, shp_ext.upper()), "rb")
+                self.shp = open(f"{shapefile_name}.{shp_ext.upper()}", "rb")
                 self._files_to_close.append(self.shp)
-            except IOError:
+            except OSError:
                 pass
 
     def load_shx(self, shapefile_name):
@@ -1275,13 +1271,13 @@ class Reader(object):
         """
         shx_ext = "shx"
         try:
-            self.shx = open("%s.%s" % (shapefile_name, shx_ext), "rb")
+            self.shx = open(f"{shapefile_name}.{shx_ext}", "rb")
             self._files_to_close.append(self.shx)
-        except IOError:
+        except OSError:
             try:
-                self.shx = open("%s.%s" % (shapefile_name, shx_ext.upper()), "rb")
+                self.shx = open(f"{shapefile_name}.{shx_ext.upper()}", "rb")
                 self._files_to_close.append(self.shx)
-            except IOError:
+            except OSError:
                 pass
 
     def load_dbf(self, shapefile_name):
@@ -1290,13 +1286,13 @@ class Reader(object):
         """
         dbf_ext = "dbf"
         try:
-            self.dbf = open("%s.%s" % (shapefile_name, dbf_ext), "rb")
+            self.dbf = open(f"{shapefile_name}.{dbf_ext}", "rb")
             self._files_to_close.append(self.dbf)
-        except IOError:
+        except OSError:
             try:
-                self.dbf = open("%s.%s" % (shapefile_name, dbf_ext.upper()), "rb")
+                self.dbf = open(f"{shapefile_name}.{dbf_ext.upper()}", "rb")
                 self._files_to_close.append(self.dbf)
-            except IOError:
+            except OSError:
                 pass
 
     def __del__(self):
@@ -1308,7 +1304,7 @@ class Reader(object):
             if hasattr(attribute, "close"):
                 try:
                     attribute.close()
-                except IOError:
+                except OSError:
                     pass
         self._files_to_close = []
 
@@ -1332,7 +1328,7 @@ class Reader(object):
             rmax = self.numRecords - 1
             if abs(i) > rmax:
                 raise IndexError(
-                    "Shape or Record index: %s out of range.  Max index: %s" % (i, rmax)
+                    f"Shape or Record index: {i} out of range.  Max index: {rmax}"
                 )
             if i < 0:
                 i = range(self.numRecords)[i]
@@ -1619,7 +1615,7 @@ class Reader(object):
 
         # store all field positions for easy lookups
         # note: fieldLookup gives the index position of a field inside Reader.fields
-        self.__fieldLookup = dict((f[0], i) for i, f in enumerate(self.fields))
+        self.__fieldLookup = {f[0]: i for i, f in enumerate(self.fields)}
 
         # by default, read all fields except the deletion flag, hence "[1:]"
         # note: recLookup gives the index position of a field inside a _Record list
@@ -1671,7 +1667,7 @@ class Reader(object):
             # make sure the given fieldnames exist
             for name in fields:
                 if name not in self.__fieldLookup or name == "DeletionFlag":
-                    raise ValueError('"{}" is not a valid field name'.format(name))
+                    raise ValueError(f'"{name}" is not a valid field name')
             # fetch relevant field info tuples
             fieldTuples = []
             for fieldinfo in self.fields[1:]:
@@ -1679,7 +1675,7 @@ class Reader(object):
                 if name in fields:
                     fieldTuples.append(fieldinfo)
             # store the field positions
-            recLookup = dict((f[0], i) for i, f in enumerate(fieldTuples))
+            recLookup = {f[0]: i for i, f in enumerate(fieldTuples)}
         else:
             # use all the dbf fields
             fieldTuples = self.fields[1:]  # sans deletion flag
@@ -1903,7 +1899,7 @@ class Reader(object):
                     yield ShapeRecord(shape=shape, record=record)
 
 
-class Writer(object):
+class Writer:
     """Provides write support for ESRI Shapefiles."""
 
     def __init__(self, target=None, shapeType=None, autoBalance=False, **kwargs):
@@ -2010,7 +2006,7 @@ class Writer(object):
             ):
                 try:
                     attribute.flush()
-                except IOError:
+                except OSError:
                     pass
 
         # Close any files that the writer opened (but not those given by user)
@@ -2018,7 +2014,7 @@ class Writer(object):
             if hasattr(attribute, "close"):
                 try:
                     attribute.close()
-                except IOError:
+                except OSError:
                     pass
         self._files_to_close = []
 
@@ -2489,7 +2485,7 @@ class Writer(object):
         if self.autoBalance and self.recNum > self.shpNum:
             self.balance()
 
-        fieldCount = sum((1 for field in self.fields if field[0] != "DeletionFlag"))
+        fieldCount = sum(1 for field in self.fields if field[0] != "DeletionFlag")
         if recordList:
             record = list(recordList)
             while len(record) < fieldCount:
